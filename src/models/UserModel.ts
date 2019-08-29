@@ -1,6 +1,8 @@
 import * as Sequelize from "sequelize";
 import { BaseModelInterface } from "../interfaces/BaseModelInterface";
 import { DefaultValuesOfCorrectType } from "graphql/validation/rules/DefaultValuesOfCorrectType";
+import {genSaltSync, hashSync, compareSync} from 'bcryptjs';
+import { ModelsInterface } from "../interfaces/ModelsInterface";
 
 export interface UserAttributes {
     id?: number;
@@ -8,6 +10,8 @@ export interface UserAttributes {
     email?: string;
     password?: string;
     photo?: string;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 export interface UserInstance extends Sequelize.Instance<UserAttributes>, UserAttributes{
@@ -50,6 +54,21 @@ export default (sequelize: Sequelize.Sequelize, DataTypes: Sequelize.DataTypes):
                 allowNull: true,
                 defaultValue: true
             }
+        }, 
+        {
+            tableName: 'users',
+            hooks: {
+                beforeCreate: (user: UserInstance, options: Sequelize.CreateOptions): void =>{
+                    const salt = genSaltSync();
+                    user.password = hashSync(user.password, salt);
+                }
+            }
         });
+
+        User.associate = (models: ModelsInterface): void => {};
+
+        User.prototype.isPassword = (encodePassword: string, password: string): boolean =>{
+            return compareSync(password, encodePassword);
+        }
     return User;
 };
