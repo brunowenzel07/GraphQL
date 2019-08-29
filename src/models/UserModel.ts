@@ -1,7 +1,7 @@
 import * as Sequelize from "sequelize";
-import { BaseModelInterface } from "../interfaces/BaseModelInterface";
-import { DefaultValuesOfCorrectType } from "graphql/validation/rules/DefaultValuesOfCorrectType";
 import {genSaltSync, hashSync, compareSync} from 'bcryptjs';
+
+import { BaseModelInterface } from "../interfaces/BaseModelInterface";
 import { ModelsInterface } from "../interfaces/ModelsInterface";
 
 export interface UserAttributes {
@@ -14,13 +14,11 @@ export interface UserAttributes {
     updatedAt?: string;
 }
 
-export interface UserInstance extends Sequelize.Instance<UserAttributes>, UserAttributes{
-    isPassword(encodePassword: string, password: string): boolean;
+export interface UserInstance extends Sequelize.Instance<UserAttributes>, UserAttributes {
+    isPassword(encodedPassword: string, password: string): boolean;
 }
 
-export interface UserModel extends BaseModelInterface, Sequelize.Model<UserInstance, UserAttributes>{
-
-}
+export interface UserModel extends BaseModelInterface, Sequelize.Model<UserInstance, UserAttributes> {}
 
 export default (sequelize: Sequelize.Sequelize, DataTypes: Sequelize.DataTypes): UserModel => {
     const User: UserModel = 
@@ -52,23 +50,29 @@ export default (sequelize: Sequelize.Sequelize, DataTypes: Sequelize.DataTypes):
                     length: 'long'
                 }),
                 allowNull: true,
-                defaultValue: true
+                defaultValue: null
             }
         }, 
         {
             tableName: 'users',
             hooks: {
-                beforeCreate: (user: UserInstance, options: Sequelize.CreateOptions): void =>{
+                beforeCreate: (user: UserInstance, options: Sequelize.CreateOptions): void => {
                     const salt = genSaltSync();
                     user.password = hashSync(user.password, salt);
+                },
+                beforeUpdate: (user: UserInstance, options: Sequelize.CreateOptions): void => {
+                    if (user.changed('password')) {
+                        const salt = genSaltSync();
+                        user.password = hashSync(user.password, salt);
+                    }
                 }
             }
         });
 
         User.associate = (models: ModelsInterface): void => {};
 
-        User.prototype.isPassword = (encodePassword: string, password: string): boolean =>{
-            return compareSync(password, encodePassword);
+        User.prototype.isPassword = (encodedPassword: string, password: string): boolean =>{
+            return compareSync(password, encodedPassword);
         }
     return User;
 };
